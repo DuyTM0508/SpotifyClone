@@ -1,17 +1,53 @@
 import { tracks } from "@/assets/data/tracks";
 import { userPlayerContext } from "@/providers/PlayerProvider";
 import { Ionicons } from "@expo/vector-icons";
+import { useEffect, useState } from "react";
 import { Image, StyleSheet, Text, View } from "react-native";
+import { Audio } from "expo-av";
+import { Sound } from "expo-av/build/Audio";
 
 const Player = () => {
+  //!State
   const { track } = userPlayerContext();
+  const image = track?.album.images?.[0];
+  const [sound, setSound] = useState<Sound>();
+  const [isPlaying, setIsPlaying] = useState(false);
 
+  //!Function
   if (!tracks) {
     return null;
   }
 
-  const image = track?.album.images?.[0];
+  useEffect(() => {
+    playTrack();
+  }, [track]);
 
+  const playTrack = async () => {
+    if (sound) {
+      await sound.unloadAsync();
+    }
+
+    if (!track?.preview_url) {
+      return;
+    }
+
+    const { sound: newSound } = await Audio.Sound.createAsync({
+      uri: track.preview_url,
+    });
+
+    setSound(newSound);
+    setIsPlaying(true);
+
+    await newSound.playAsync();
+  };
+
+  const pauseTrack = async () => {
+    if (sound) {
+      await sound.pauseAsync();
+    }
+  };
+
+  //!Render
   return (
     <>
       {track && (
@@ -32,12 +68,29 @@ const Player = () => {
               color={"white"}
               style={{ marginHorizontal: 10 }}
             />
-            <Ionicons
-              disabled={!track?.preview_url}
-              name={"play"}
-              size={22}
-              color={track?.preview_url ? "white" : "gray"}
-            />
+            {isPlaying ? (
+              <Ionicons
+                disabled={!track?.preview_url}
+                name={"pause"}
+                size={22}
+                color={"white"}
+                onPress={async () => {
+                  await pauseTrack();
+                  setIsPlaying(false);
+                }}
+              />
+            ) : (
+              <Ionicons
+                disabled={!track?.preview_url}
+                name={"play"}
+                size={22}
+                color={track?.preview_url ? "white" : "gray"}
+                onPress={async () => {
+                  await playTrack();
+                  setIsPlaying(true);
+                }}
+              />
+            )}
           </View>
         </View>
       )}
